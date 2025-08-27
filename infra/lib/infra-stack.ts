@@ -18,10 +18,22 @@ export class InfraStack extends cdk.Stack {
     });
 
 
-    // ✅ Use S3BucketOrigin instead of deprecated S3Origin
+    // Create Origin Access Control for S3
+    const originAccessControl = new cloudfront.CfnOriginAccessControl(this, "OriginAccessControl", {
+      originAccessControlConfig: {
+        name: "S3OriginAccessControl",
+        originAccessControlOriginType: "s3",
+        signingBehavior: "always",
+        signingProtocol: "sigv4",
+      },
+    });
+
+    // Create S3 Origin
+    const s3Origin = new origins.S3Origin(websiteBucket);
+
     const cfDistribution = new cloudfront.Distribution(this, "CFDistribution", {
       defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessControl(websiteBucket), // 🔥 This creates OAC automatically
+        origin: s3Origin,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       },
       defaultRootObject: "index.html",
@@ -40,10 +52,23 @@ export class InfraStack extends cdk.Stack {
       ],
     });
 
-    // ❌ Remove manual OAC setup since S3BucketOrigin.withOriginAccessControl handles it
-    // The following lines are no longer needed:
-    // - Manual OAC attachment
-    // - Manual S3 bucket policy
+    // Attach OAC to the distribution
+    const cfnDistribution = cfDistribution.node.defaultChild as cloudfront.CfnDistribution;
+    cfnDistribution.addPropertyOverride("DistributionConfig.Origins.0.OriginAccessControlId", originAccessControl.attrId);
+
+    // Grant CloudFront access to S3 bucket
+    websiteBucket.addToResourcePolicy(
+      new cdk.aws_iam.PolicyStatement({
+        actions: ["s3:GetObject"],
+        resources: [websiteBucket.arnForObjects("*")],
+        principals: [new cdk.aws_iam.ServicePrincipal("cloudfront.amazonaws.com")],
+        conditions: {
+          StringEquals: {
+            "AWS:SourceArn": `arn:aws:cloudfront::${this.account}:distribution/${cfDistribution.distributionId}`,
+          },
+        },
+      })
+    );
 
     // ===== DynamoDB Table  =====
     const table = new dynamodb.Table(this, "Table", {
