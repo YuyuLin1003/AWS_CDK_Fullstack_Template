@@ -18,14 +18,9 @@ export class InfraStack extends cdk.Stack {
     });
 
 
-    // Create Origin Access Control for S3
-    const originAccessControl = new cloudfront.CfnOriginAccessControl(this, "OriginAccessControl", {
-      originAccessControlConfig: {
-        name: "S3OriginAccessControl",
-        originAccessControlOriginType: "s3",
-        signingBehavior: "always",
-        signingProtocol: "sigv4",
-      },
+    // Create Origin Access Identity for S3
+    const originAccessIdentity = new cloudfront.OriginAccessIdentity(this, "OriginAccessIdentity", {
+      comment: "OAI for S3 bucket access",
     });
 
     // Create S3 Origin
@@ -52,23 +47,8 @@ export class InfraStack extends cdk.Stack {
       ],
     });
 
-    // Attach OAC to the distribution
-    const cfnDistribution = cfDistribution.node.defaultChild as cloudfront.CfnDistribution;
-    cfnDistribution.addPropertyOverride("DistributionConfig.Origins.0.OriginAccessControlId", originAccessControl.attrId);
-
-    // Grant CloudFront access to S3 bucket
-    websiteBucket.addToResourcePolicy(
-      new cdk.aws_iam.PolicyStatement({
-        actions: ["s3:GetObject"],
-        resources: [websiteBucket.arnForObjects("*")],
-        principals: [new cdk.aws_iam.ServicePrincipal("cloudfront.amazonaws.com")],
-        conditions: {
-          StringEquals: {
-            "AWS:SourceArn": `arn:aws:cloudfront::${this.account}:distribution/${cfDistribution.distributionId}`,
-          },
-        },
-      })
-    );
+    // Grant CloudFront access to S3 bucket using OAI
+    websiteBucket.grantRead(originAccessIdentity);
 
     // ===== DynamoDB Table  =====
     const table = new dynamodb.Table(this, "Table", {
