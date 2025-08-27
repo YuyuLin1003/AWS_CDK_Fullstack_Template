@@ -35,7 +35,7 @@ jobs:
 
       - name: Install backend deps
         working-directory: ./backend
-        run: npm ci
+        run: npm install
 
       - name: Build backend
         working-directory: ./backend
