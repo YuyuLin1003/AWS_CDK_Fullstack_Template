@@ -66,7 +66,7 @@ export class InfraStack extends cdk.Stack {
 
     // ===== Deploy React/Vite frontend build to S3 =====
     new s3deploy.BucketDeployment(this, "DeployWebsite", {
-      sources: [s3deploy.Source.asset("../frontend/test/dist")],
+      sources: [s3deploy.Source.asset("../frontend/dist")],
       destinationBucket: websiteBucket,
       distribution: cfDistribution,
       distributionPaths: ["/*"],

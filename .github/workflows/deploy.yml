@@ -26,11 +26,11 @@ jobs:
           node-version: 20
 
       - name: Install frontend deps
-        working-directory: ./frontend/test
+        working-directory: ./frontend
         run: npm install
 
       - name: Build frontend
-        working-directory: ./frontend/test
+        working-directory: ./frontend
         run: npm run build
 
       - name: Install backend deps
@@ -58,7 +58,7 @@ jobs:
           name: build-artifacts
           if-no-files-found: error
           path: |
-            frontend/test/dist/**
+            frontend/dist/**
             backend/dist/**
             infra/**
 
