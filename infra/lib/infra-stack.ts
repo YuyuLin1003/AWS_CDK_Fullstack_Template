@@ -6,6 +6,7 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import * as logs from "aws-cdk-lib/aws-logs";
 
 export class InfraStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
@@ -42,6 +43,7 @@ export class InfraStack extends cdk.Stack {
       code: lambda.Code.fromAsset("../backend/dist"),
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
+      logRetention: logs.RetentionDays.ONE_WEEK,
       environment: {
         TABLE: table.tableName,
       },
