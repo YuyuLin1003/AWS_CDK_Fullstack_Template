@@ -17,38 +17,17 @@ export class InfraStack extends cdk.Stack {
       enforceSSL: true,
     });
 
-
-    // Create Origin Access Identity for S3
-    const originAccessIdentity = new cloudfront.OriginAccessIdentity(this, "OriginAccessIdentity", {
-      comment: "OAI for S3 bucket access",
-    });
-
-    // Create S3 Origin
-    const s3Origin = new origins.S3Origin(websiteBucket);
-
     const cfDistribution = new cloudfront.Distribution(this, "CFDistribution", {
       defaultBehavior: {
-        origin: s3Origin,
+        origin: origins.S3BucketOrigin.withOriginAccessControl(websiteBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       },
       defaultRootObject: "index.html",
-      // Handle SPA routing
       errorResponses: [
-        {
-          httpStatus: 404,
-          responseHttpStatus: 200,
-          responsePagePath: "/index.html",
-        },
-        {
-          httpStatus: 403,
-          responseHttpStatus: 200,
-          responsePagePath: "/index.html",
-        },
+        { httpStatus: 404, responseHttpStatus: 200, responsePagePath: "/index.html" },
+        { httpStatus: 403, responseHttpStatus: 200, responsePagePath: "/index.html" },
       ],
     });
-
-    // Grant CloudFront access to S3 bucket using OAI
-    websiteBucket.grantRead(originAccessIdentity);
 
     // ===== DynamoDB Table  =====
     const table = new dynamodb.Table(this, "Table", {
@@ -74,7 +53,6 @@ export class InfraStack extends cdk.Stack {
     const api = new apigateway.LambdaRestApi(this, "Api", {
       handler: backendLambda,
       proxy: true,
-      // Add CORS support
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
@@ -82,9 +60,7 @@ export class InfraStack extends cdk.Stack {
       },
     });
 
-    new cdk.CfnOutput(this, "ApiUrl", {
-      value: api.url ?? "Something went wrong",
-    });
+    new cdk.CfnOutput(this, "ApiUrl", { value: api.url ?? "Something went wrong" });
 
     // ===== Deploy React/Vite frontend build to S3 =====
     new s3deploy.BucketDeployment(this, "DeployWebsite", {
@@ -94,8 +70,6 @@ export class InfraStack extends cdk.Stack {
       distributionPaths: ["/*"],
     });
 
-    new cdk.CfnOutput(this, "CloudFrontURL", {
-      value: `https://${cfDistribution.domainName}`,
-    });
+    new cdk.CfnOutput(this, "CloudFrontURL", { value: `https://${cfDistribution.domainName}` });
   }
 }
