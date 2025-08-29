@@ -8,8 +8,13 @@ import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as logs from "aws-cdk-lib/aws-logs";
 
+export interface InfraStackProps extends cdk.StackProps {
+  stage: string;
+  branch: string;
+}
+
 export class InfraStack extends cdk.Stack {
-  constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
+  constructor(scope: cdk.App, id: string, props: InfraStackProps) {
     super(scope, id, props);
 
     // ===== Frontend (S3 + CloudFront with OAC) =====
@@ -46,6 +51,8 @@ export class InfraStack extends cdk.Stack {
       logRetention: logs.RetentionDays.ONE_WEEK,
       environment: {
         TABLE: table.tableName,
+        STAGE: props.stage,
+        BRANCH: props.branch,
       },
     });
 
